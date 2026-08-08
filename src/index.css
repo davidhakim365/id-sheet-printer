@@ -1,0 +1,53 @@
+:root {
+  --font-sans: 'Instrument Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Newsreader', Georgia, serif;
+  --bg: #e7ece4;
+  --panel: rgba(244, 247, 242, 0.82);
+  --ink: #17231c;
+  --ink-soft: #2c3a31;
+  --muted: #5d6b61;
+  --line: rgba(28, 48, 36, 0.14);
+  --line-strong: rgba(28, 48, 36, 0.28);
+  --accent: #1f5c45;
+  --accent-deep: #164533;
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(31, 92, 69, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 0%, rgba(120, 92, 48, 0.1), transparent 28%),
+    linear-gradient(180deg, #eef2eb 0%, var(--bg) 45%, #dde5d8 100%);
+  background-attachment: fixed;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

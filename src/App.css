@@ -1,0 +1,416 @@
+.app {
+  min-height: 100%;
+}
+
+.screen-ui {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2.5rem 0 4rem;
+}
+
+.hero {
+  display: grid;
+  gap: 1.75rem;
+  margin-bottom: 1.75rem;
+  padding: 2.25rem 0 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (min-width: 860px) {
+  .hero {
+    grid-template-columns: 1.4fr 0.8fr;
+    align-items: end;
+  }
+}
+
+.brand {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--ink);
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 18ch;
+  font-family: var(--font-sans);
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.lede {
+  margin: 1rem 0 0;
+  max-width: 48ch;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.hero-stats div {
+  padding: 1rem 0.85rem;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18)),
+    var(--panel);
+  border: 1px solid var(--line);
+}
+
+.hero-stats span {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.hero-stats small {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.panel {
+  margin-bottom: 1.25rem;
+  padding: 1.25rem 1.35rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.panel h2 {
+  margin: 0 0 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.action-row,
+.print-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin: 1rem 0;
+}
+
+.toggles label {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.howto {
+  margin: 1.15rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.howto li + li {
+  margin-top: 0.25rem;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.7rem 1rem;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #f4f7f4;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+
+.btn.danger {
+  color: #8a2f2f;
+  border-color: #d8b0b0;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.hint.warn {
+  color: #8a4b16;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.card-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.card-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: 64px 64px;
+  gap: 0.4rem;
+}
+
+.thumbs img,
+.back-slot {
+  width: 64px;
+  height: 42px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: #dfe5df;
+}
+
+.back-slot {
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.meta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.meta strong {
+  font-size: 0.9rem;
+}
+
+.meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.row-actions button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  min-width: 2rem;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.danger-text {
+  color: #8a2f2f !important;
+}
+
+.preview-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.preview-block p {
+  margin: 0 0 0.55rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.preview-block .sheet {
+  --preview-scale: 0.42;
+  --paper-w: 200mm;
+  --paper-h: 300mm;
+  transform-origin: top left;
+  transform: scale(var(--preview-scale));
+  margin-right: calc(-1 * (1 - var(--preview-scale)) * var(--paper-w));
+  margin-bottom: calc(1.25rem + (-1 * (1 - var(--preview-scale)) * var(--paper-h)));
+  box-shadow: 0 18px 40px rgba(24, 36, 28, 0.12);
+}
+
+.sheet {
+  position: relative;
+  box-sizing: border-box;
+  background: #fff;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+
+.sheet:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.sheet-label {
+  position: absolute;
+  top: 1.5mm;
+  right: 2mm;
+  z-index: 2;
+  font-size: 2.2mm;
+  letter-spacing: 0.04em;
+  color: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.sheet-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+}
+
+.card-cell {
+  --inner-pad: 0.9mm;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: var(--inner-pad);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.with-guides .card-cell {
+  outline: 0.2mm dashed rgba(20, 40, 28, 0.28);
+  outline-offset: -0.2mm;
+}
+
+.card-fit {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Fit whole image inside the card — no crop, no stretch */
+.card-fit img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/*
+ * Keep the 90×60 slot; transform only the ID image inside it.
+ * Pre-rotate max size uses swapped sides so after 90° it fills the cell.
+ */
+.card-fit.is-rotated img {
+  max-width: calc(var(--card-h) - (2 * var(--inner-pad)));
+  max-height: calc(var(--card-w) - (2 * var(--inner-pad)));
+  transform: rotate(90deg);
+}
+
+.card-fit.is-flipped img {
+  transform: scaleX(-1);
+}
+
+.card-fit.is-rotated.is-flipped img {
+  max-width: calc(var(--card-h) - (2 * var(--inner-pad)));
+  max-height: calc(var(--card-w) - (2 * var(--inner-pad)));
+  transform: rotate(90deg) scaleX(-1);
+}
+
+.card-empty {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #9aa39a;
+  font-size: 3mm;
+}
+
+.print-root {
+  display: none;
+}
+
+@media print {
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .screen-ui {
+    display: none !important;
+  }
+
+  .print-root {
+    display: block !important;
+  }
+
+  .sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  .sheet-label {
+    display: none;
+  }
+}
