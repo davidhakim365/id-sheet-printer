@@ -43,6 +43,29 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
+/** Scale src to fit inside the slot without stretching, then center it. */
+export function containRect(
+  slotX: number,
+  slotY: number,
+  slotW: number,
+  slotH: number,
+  srcW: number,
+  srcH: number,
+): { x: number; y: number; w: number; h: number } {
+  if (srcW <= 0 || srcH <= 0 || slotW <= 0 || slotH <= 0) {
+    return { x: slotX, y: slotY, w: slotW, h: slotH }
+  }
+  const scale = Math.min(slotW / srcW, slotH / srcH)
+  const w = srcW * scale
+  const h = srcH * scale
+  return {
+    x: slotX + (slotW - w) / 2,
+    y: slotY + (slotH - h) / 2,
+    w,
+    h,
+  }
+}
+
 export async function composeIdJpeg(
   templateUrl: string,
   barcodeUrl: string,
@@ -58,13 +81,17 @@ export async function composeIdJpeg(
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(template, 0, 0)
-  ctx.drawImage(
-    barcode,
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  const fitted = containRect(
     (rect.x / 100) * canvas.width,
     (rect.y / 100) * canvas.height,
     (rect.w / 100) * canvas.width,
     (rect.h / 100) * canvas.height,
+    barcode.naturalWidth,
+    barcode.naturalHeight,
   )
+  ctx.drawImage(barcode, fitted.x, fitted.y, fitted.w, fitted.h)
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/jpeg', quality)
   })

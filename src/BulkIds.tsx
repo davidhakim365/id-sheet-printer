@@ -45,7 +45,7 @@ export default function BulkIds({
   const [layoutBarcode, setLayoutBarcode] = useState<ImageAsset | null>(null)
   const [dataset, setDataset] = useState<ImageAsset[]>([])
   const [rect, setRect] = useState<RectPct>({ x: 29, y: 78, w: 42, h: 12 })
-  const [lockAspect, setLockAspect] = useState(false)
+  const [lockAspect, setLockAspect] = useState(true)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -330,7 +330,7 @@ export default function BulkIds({
           <ol className="howto">
             <li>Add the blank front ID (no barcode on it).</li>
             <li>Add one barcode and drag or resize it on the ID.</li>
-            <li>Add the barcode dataset — each file replaces that barcode in the same place.</li>
+            <li>Add the barcode dataset — each file is fitted into that box without stretching.</li>
             <li>Generate a ZIP of JPEGs, named after each barcode file.</li>
           </ol>
 
