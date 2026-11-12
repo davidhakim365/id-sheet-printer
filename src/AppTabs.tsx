@@ -1,4 +1,4 @@
-export type AppTab = 'print' | 'bulk'
+export type AppTab = 'print' | 'bulk' | 'private'
 
 export function AppTabs({
   value,
@@ -14,6 +14,9 @@ export function AppTabs({
       </button>
       <button type="button" data-active={value === 'bulk'} onClick={() => onChange('bulk')}>
         Bulk IDs
+      </button>
+      <button type="button" data-active={value === 'private'} onClick={() => onChange('private')}>
+        Private life
       </button>
     </nav>
   )

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AppTab } from './AppTabs'
 import BulkIds from './BulkIds'
 import PrintSheets from './PrintSheets'
+import PrivateLife from './PrivateLife'
 import './App.css'
 
 export default function App() {
@@ -9,6 +10,10 @@ export default function App() {
 
   if (tab === 'bulk') {
     return <BulkIds tab={tab} onTab={setTab} />
+  }
+
+  if (tab === 'private') {
+    return <PrivateLife tab={tab} onTab={setTab} />
   }
 
   return <PrintSheets tab={tab} onTab={setTab} />

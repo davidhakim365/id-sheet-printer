@@ -205,6 +205,11 @@
   gap: 0.75rem;
 }
 
+.hero-stats.is-single {
+  grid-template-columns: 1fr;
+  align-self: end;
+}
+
 .hero-stats div {
   padding: 1rem 0.85rem;
   background:
@@ -561,4 +566,97 @@
   .sheet-label {
     display: none;
   }
+}
+
+.lock-card {
+  max-width: 440px;
+}
+
+.stack-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.7rem 0.85rem;
+}
+
+.field textarea {
+  min-height: 240px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.private-error {
+  margin: 0;
+  color: #8a2f2f;
+}
+
+.private-layout {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.15rem;
+}
+
+@media (min-width: 860px) {
+  .private-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.private-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.private-list button {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.private-list button strong {
+  font-size: 0.92rem;
+}
+
+.private-list button small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.private-list button[data-active='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+code {
+  font-size: 0.92em;
 }
