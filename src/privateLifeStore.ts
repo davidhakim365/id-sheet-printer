@@ -1,3 +1,5 @@
+import type { BankCertificate, BankLoan } from './money'
+
 export type PrivateNote = {
   id: string
   title: string
@@ -9,18 +11,24 @@ export type PrivateNote = {
 export type PrivateLifeFile = {
   passwordHash: string
   notes: PrivateNote[]
+  certificates: BankCertificate[]
+  loans: BankLoan[]
 }
 
 export type PrivateLifeOk = {
   ok: true
   hasPassword: boolean
   notes?: PrivateNote[]
+  certificates?: BankCertificate[]
+  loans?: BankLoan[]
 }
 
 type PrivateLifeBody = {
   action: 'set-password' | 'unlock' | 'save' | 'change-password'
   password: string
   notes?: PrivateNote[]
+  certificates?: BankCertificate[]
+  loans?: BankLoan[]
   nextPassword?: string
 }
 

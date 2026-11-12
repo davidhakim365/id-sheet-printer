@@ -226,6 +226,11 @@
   color: var(--accent);
 }
 
+.hero-stats span[data-sign='neg'],
+.money-summary span[data-sign='neg'] {
+  color: #8a2f2f;
+}
+
 .hero-stats small {
   display: block;
   margin-top: 0.45rem;
@@ -591,7 +596,8 @@
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.field select {
   width: 100%;
   border: 1px solid var(--line-strong);
   background: #fff;
@@ -659,4 +665,129 @@
 
 code {
   font-size: 0.92em;
+}
+
+.section-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin: 1rem 0;
+}
+
+.section-tabs button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 0.55rem 0.8rem;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.section-tabs button[data-active='true'] {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.money-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+@media (min-width: 720px) {
+  .money-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.money-summary div {
+  padding: 0.9rem 0.8rem;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+}
+
+.money-summary span {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  line-height: 1.1;
+  color: var(--accent);
+}
+
+.money-summary small {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.money-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1.4rem 0 0.55rem;
+}
+
+.money-section-head h2 {
+  margin: 0;
+}
+
+.money-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.money-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--line);
+}
+
+.money-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.money-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 720px) {
+  .money-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.money-results {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.money-results div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.money-results dt {
+  color: var(--muted);
+}
+
+.money-results dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
 }

@@ -1,12 +1,16 @@
 import { useEffect, useId, useState } from 'react'
 import { AppTabs, type AppTab } from './AppTabs'
+import MoneyBook from './MoneyBook'
+import { formatEgp, moneySummary, type BankCertificate, type BankLoan } from './money'
 import {
   readPrivateLifeStatus,
   writePrivateLife,
+  type PrivateLifeOk,
   type PrivateNote,
 } from './privateLifeStore'
 
 type Phase = 'loading' | 'offline' | 'setup' | 'locked' | 'open'
+type Section = 'notes' | 'money'
 
 function formatWhen(iso: string) {
   const date = new Date(iso)
@@ -19,8 +23,8 @@ function formatWhen(iso: string) {
   })
 }
 
-function noteSnapshot(notes: PrivateNote[]) {
-  return JSON.stringify(notes)
+function bookSnapshot(notes: PrivateNote[], certificates: BankCertificate[], loans: BankLoan[]) {
+  return JSON.stringify({ notes, certificates, loans })
 }
 
 export default function PrivateLife({
@@ -35,7 +39,10 @@ export default function PrivateLife({
   const [confirmPassword, setConfirmPassword] = useState('')
   const [sessionPassword, setSessionPassword] = useState('')
   const [notes, setNotes] = useState<PrivateNote[]>([])
-  const [savedSnapshot, setSavedSnapshot] = useState('[]')
+  const [certificates, setCertificates] = useState<BankCertificate[]>([])
+  const [loans, setLoans] = useState<BankLoan[]>([])
+  const [section, setSection] = useState<Section>('money')
+  const [savedSnapshot, setSavedSnapshot] = useState(bookSnapshot([], [], []))
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [nextPassword, setNextPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +55,8 @@ export default function PrivateLife({
   const nextPasswordId = useId()
 
   const selected = notes.find((note) => note.id === selectedId) ?? null
-  const dirty = noteSnapshot(notes) !== savedSnapshot
+  const dirty = bookSnapshot(notes, certificates, loans) !== savedSnapshot
+  const summary = moneySummary(certificates, loans)
 
   useEffect(() => {
     let cancelled = false
@@ -65,10 +73,15 @@ export default function PrivateLife({
     }
   }, [])
 
-  function openWith(nextPasswordValue: string, nextNotes: PrivateNote[]) {
+  function openWith(nextPasswordValue: string, data: PrivateLifeOk) {
+    const nextNotes = data.notes ?? []
+    const nextCertificates = data.certificates ?? []
+    const nextLoans = data.loans ?? []
     setSessionPassword(nextPasswordValue)
     setNotes(nextNotes)
-    setSavedSnapshot(noteSnapshot(nextNotes))
+    setCertificates(nextCertificates)
+    setLoans(nextLoans)
+    setSavedSnapshot(bookSnapshot(nextNotes, nextCertificates, nextLoans))
     setSelectedId(nextNotes[0]?.id ?? null)
     setPassword('')
     setConfirmPassword('')
@@ -89,7 +102,7 @@ export default function PrivateLife({
     setBusy(true)
     try {
       const data = await writePrivateLife({ action: 'set-password', password })
-      openWith(password, data.notes ?? [])
+      openWith(password, data)
       setStatus('Password saved into src/privateLife.data.ts')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save the password.')
@@ -104,7 +117,7 @@ export default function PrivateLife({
     setBusy(true)
     try {
       const data = await writePrivateLife({ action: 'unlock', password })
-      openWith(password, data.notes ?? [])
+      openWith(password, data)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not unlock.')
     } finally {
@@ -115,7 +128,9 @@ export default function PrivateLife({
   function lock() {
     setSessionPassword('')
     setNotes([])
-    setSavedSnapshot('[]')
+    setCertificates([])
+    setLoans([])
+    setSavedSnapshot(bookSnapshot([], [], []))
     setSelectedId(null)
     setNextPassword('')
     setStatus(null)
@@ -162,12 +177,18 @@ export default function PrivateLife({
         action: 'save',
         password: sessionPassword,
         notes,
+        certificates,
+        loans,
       })
-      const next = data.notes ?? notes
-      setNotes(next)
-      setSavedSnapshot(noteSnapshot(next))
+      const nextNotes = data.notes ?? notes
+      const nextCertificates = data.certificates ?? certificates
+      const nextLoans = data.loans ?? loans
+      setNotes(nextNotes)
+      setCertificates(nextCertificates)
+      setLoans(nextLoans)
+      setSavedSnapshot(bookSnapshot(nextNotes, nextCertificates, nextLoans))
       setSelectedId((current) =>
-        next.some((note) => note.id === current) ? current : (next[0]?.id ?? null),
+        nextNotes.some((note) => note.id === current) ? current : (nextNotes[0]?.id ?? null),
       )
       setStatus('Saved into src/privateLife.data.ts')
     } catch (caught) {
@@ -208,16 +229,26 @@ export default function PrivateLife({
         <header className="hero">
           <div className="hero-copy">
             <p className="brand">Private life</p>
-            <h1>A locked notebook stored in the project code.</h1>
+            <h1>Notes, certificates, and loans, locked in this project.</h1>
             <p className="lede">
-              Notes are written into <code>src/privateLife.data.ts</code>. The password is stored
+              Everything is written into <code>src/privateLife.data.ts</code>. The password is stored
               there as a hash. Nothing goes into a database.
             </p>
           </div>
-          <div className="hero-stats is-single" aria-hidden="true">
+          <div className="hero-stats" aria-hidden="true">
             <div>
-              <span>{phase === 'open' ? notes.length : '—'}</span>
-              <small>{phase === 'open' ? 'notes' : 'locked'}</small>
+              <span data-sign={phase === 'open' && summary.net < 0 ? 'neg' : 'pos'}>
+                {phase === 'open' ? formatEgp(summary.net) : '—'}
+              </span>
+              <small>left each month</small>
+            </div>
+            <div>
+              <span>{phase === 'open' ? certificates.length : '—'}</span>
+              <small>certificates</small>
+            </div>
+            <div>
+              <span>{phase === 'open' ? loans.length : '—'}</span>
+              <small>loans</small>
             </div>
           </div>
         </header>
@@ -308,9 +339,11 @@ export default function PrivateLife({
           <>
             <section className="panel">
               <div className="action-row">
-                <button type="button" className="btn primary" onClick={addNote}>
-                  New note
-                </button>
+                {section === 'notes' && (
+                  <button type="button" className="btn primary" onClick={addNote}>
+                    New note
+                  </button>
+                )}
                 <button type="button" className="btn primary" onClick={() => void saveNotes()} disabled={busy || !dirty}>
                   Save into code
                 </button>
@@ -322,6 +355,31 @@ export default function PrivateLife({
               </div>
               {error && <p className="private-error">{error}</p>}
 
+              <div className="section-tabs" role="tablist" aria-label="Private life sections">
+                <button type="button" data-active={section === 'money'} onClick={() => setSection('money')}>
+                  Certificates & loans
+                </button>
+                <button type="button" data-active={section === 'notes'} onClick={() => setSection('notes')}>
+                  Notes
+                </button>
+              </div>
+
+              {section === 'money' && (
+                <MoneyBook
+                  certificates={certificates}
+                  loans={loans}
+                  onCertificates={(next) => {
+                    setCertificates(next)
+                    setStatus(null)
+                  }}
+                  onLoans={(next) => {
+                    setLoans(next)
+                    setStatus(null)
+                  }}
+                />
+              )}
+
+              {section === 'notes' && (
               <div className="private-layout">
                 <ul className="private-list">
                   {notes.length === 0 && <li className="empty">No notes yet.</li>}
@@ -365,6 +423,7 @@ export default function PrivateLife({
                   <p className="empty">Add a note, then save it into the source file.</p>
                 )}
               </div>
+              )}
             </section>
 
             <section className="panel lock-card">

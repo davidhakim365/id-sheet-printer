@@ -20,9 +20,35 @@ type PrivateNote = {
   updatedAt: string
 }
 
+type BankCertificate = {
+  id: string
+  name: string
+  bank: string
+  principal: number
+  annualRate: number
+  years: number
+  payout: 'monthly' | 'quarterly' | 'yearly' | 'maturity'
+  compounding: 'monthly' | 'quarterly' | 'semiannual' | 'yearly'
+  startDate: string
+}
+
+type BankLoan = {
+  id: string
+  name: string
+  bank: string
+  principal: number
+  annualRate: number
+  months: number
+  kind: 'declining' | 'flat'
+  startDate: string
+  adminFee: number
+}
+
 type PrivateLifeFile = {
   passwordHash: string
   notes: PrivateNote[]
+  certificates: BankCertificate[]
+  loans: BankLoan[]
 }
 
 class PrivateLifeError extends Error {
@@ -58,6 +84,74 @@ function asText(value: unknown, max: number, label: string) {
   return value
 }
 
+function asNumber(value: unknown, max: number, label: string) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > max) {
+    throw new PrivateLifeError(`Each entry needs a valid ${label}.`)
+  }
+  return value
+}
+
+function asChoice<T extends string>(value: unknown, allowed: readonly T[], label: string): T {
+  if (typeof value === 'string' && allowed.includes(value as T)) return value as T
+  throw new PrivateLifeError(`Each entry needs a valid ${label}.`)
+}
+
+function asDate(value: unknown) {
+  const text = asText(value, 10, 'date')
+  if (text !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    throw new PrivateLifeError('Each entry needs a valid date.')
+  }
+  return text
+}
+
+function sanitizeCertificates(value: unknown): BankCertificate[] {
+  if (!Array.isArray(value)) throw new PrivateLifeError('Certificates must be a list.')
+  if (value.length > 100) throw new PrivateLifeError('Too many certificates.')
+  return value.map((item) => {
+    if (!item || typeof item !== 'object') throw new PrivateLifeError('A certificate is invalid.')
+    const entry = item as Record<string, unknown>
+    const id = asText(entry.id, 80, 'id')
+    if (!/^[\w-]{1,80}$/.test(id)) throw new PrivateLifeError('A certificate id is invalid.')
+    return {
+      id,
+      name: asText(entry.name, 80, 'name'),
+      bank: asText(entry.bank, 80, 'bank'),
+      principal: asNumber(entry.principal, 1_000_000_000_000, 'amount'),
+      annualRate: asNumber(entry.annualRate, 100, 'rate'),
+      years: asNumber(entry.years, 40, 'term'),
+      payout: asChoice(entry.payout, ['monthly', 'quarterly', 'yearly', 'maturity'] as const, 'payout'),
+      compounding: asChoice(
+        entry.compounding,
+        ['monthly', 'quarterly', 'semiannual', 'yearly'] as const,
+        'compounding',
+      ),
+      startDate: asDate(entry.startDate),
+    }
+  })
+}
+
+function sanitizeLoans(value: unknown): BankLoan[] {
+  if (!Array.isArray(value)) throw new PrivateLifeError('Loans must be a list.')
+  if (value.length > 100) throw new PrivateLifeError('Too many loans.')
+  return value.map((item) => {
+    if (!item || typeof item !== 'object') throw new PrivateLifeError('A loan is invalid.')
+    const entry = item as Record<string, unknown>
+    const id = asText(entry.id, 80, 'id')
+    if (!/^[\w-]{1,80}$/.test(id)) throw new PrivateLifeError('A loan id is invalid.')
+    return {
+      id,
+      name: asText(entry.name, 80, 'name'),
+      bank: asText(entry.bank, 80, 'bank'),
+      principal: asNumber(entry.principal, 1_000_000_000_000, 'amount'),
+      annualRate: asNumber(entry.annualRate, 100, 'rate'),
+      months: asNumber(entry.months, 600, 'term'),
+      kind: asChoice(entry.kind, ['declining', 'flat'] as const, 'interest type'),
+      startDate: asDate(entry.startDate),
+      adminFee: asNumber(entry.adminFee, 1_000_000_000_000, 'fee'),
+    }
+  })
+}
+
 function sanitizeNotes(value: unknown): PrivateNote[] {
   if (!Array.isArray(value)) throw new PrivateLifeError('Notes must be a list.')
   if (value.length > 500) throw new PrivateLifeError('Too many notes.')
@@ -82,7 +176,7 @@ function serialize(data: PrivateLifeFile) {
 /** Saved by the Private life tab. This file is the store — there is no database. */
 export const privateLifeFile: PrivateLifeFile =
 ${startMark}
-${JSON.stringify({ passwordHash: data.passwordHash, notes: data.notes }, null, 2)}
+${JSON.stringify({ passwordHash: data.passwordHash, notes: data.notes, certificates: data.certificates, loans: data.loans }, null, 2)}
 ${endMark}
 `
 }
@@ -98,10 +192,27 @@ function readStore(): PrivateLifeFile {
   if (!parsed || typeof parsed !== 'object') {
     throw new PrivateLifeError('Private life file could not be read.')
   }
-  const record = parsed as { passwordHash?: unknown; notes?: unknown }
+  const record = parsed as {
+    passwordHash?: unknown
+    notes?: unknown
+    certificates?: unknown
+    loans?: unknown
+  }
   return {
     passwordHash: typeof record.passwordHash === 'string' ? record.passwordHash : '',
     notes: sanitizeNotes(record.notes ?? []),
+    certificates: sanitizeCertificates(record.certificates ?? []),
+    loans: sanitizeLoans(record.loans ?? []),
+  }
+}
+
+function publicStore(store: PrivateLifeFile) {
+  return {
+    ok: true as const,
+    hasPassword: Boolean(store.passwordHash),
+    notes: store.notes,
+    certificates: store.certificates,
+    loans: store.loans,
   }
 }
 
@@ -117,6 +228,8 @@ function handleAction(body: unknown) {
     action?: unknown
     password?: unknown
     notes?: unknown
+    certificates?: unknown
+    loans?: unknown
     nextPassword?: unknown
   }
   const password = record.password
@@ -129,7 +242,7 @@ function handleAction(body: unknown) {
     assertPassword(password)
     store.passwordHash = passwordHash(password)
     writeStore(store)
-    return { ok: true as const, hasPassword: true, notes: store.notes }
+    return publicStore(store)
   }
 
   if (!store.passwordHash) throw new PrivateLifeError('Set a password first.')
@@ -138,13 +251,15 @@ function handleAction(body: unknown) {
   }
 
   if (record.action === 'unlock') {
-    return { ok: true as const, hasPassword: true, notes: store.notes }
+    return publicStore(store)
   }
 
   if (record.action === 'save') {
-    store.notes = sanitizeNotes(record.notes)
+    if ('notes' in record) store.notes = sanitizeNotes(record.notes)
+    if ('certificates' in record) store.certificates = sanitizeCertificates(record.certificates)
+    if ('loans' in record) store.loans = sanitizeLoans(record.loans)
     writeStore(store)
-    return { ok: true as const, hasPassword: true, notes: store.notes }
+    return publicStore(store)
   }
 
   if (record.action === 'change-password') {
@@ -154,7 +269,7 @@ function handleAction(body: unknown) {
     assertPassword(record.nextPassword)
     store.passwordHash = passwordHash(record.nextPassword)
     writeStore(store)
-    return { ok: true as const, hasPassword: true, notes: store.notes }
+    return publicStore(store)
   }
 
   throw new PrivateLifeError('Unknown action.')
