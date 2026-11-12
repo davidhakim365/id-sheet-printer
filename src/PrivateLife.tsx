@@ -1,15 +1,19 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { AppTabs, type AppTab } from './AppTabs'
 import MoneyBook from './MoneyBook'
 import { formatEgp, moneySummary, type BankCertificate, type BankLoan } from './money'
 import {
-  readPrivateLifeStatus,
-  writePrivateLife,
+  bookOk,
+  hashPassword,
+  loadPrivateBook,
+  savePrivateBook,
+  tryWritePrivateLife,
+  type PrivateBook,
   type PrivateLifeOk,
   type PrivateNote,
 } from './privateLifeStore'
 
-type Phase = 'loading' | 'offline' | 'setup' | 'locked' | 'open'
+type Phase = 'setup' | 'locked' | 'open'
 type Section = 'notes' | 'money'
 
 function formatWhen(iso: string) {
@@ -34,7 +38,10 @@ export default function PrivateLife({
   tab: AppTab
   onTab: (tab: AppTab) => void
 }) {
-  const [phase, setPhase] = useState<Phase>('loading')
+  const [initialBook] = useState(loadPrivateBook)
+  const [knownHash, setKnownHash] = useState(initialBook.passwordHash)
+  const [phase, setPhase] = useState<Phase>(initialBook.passwordHash ? 'locked' : 'setup')
+  const savedBook = useRef(bookOk(initialBook))
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [sessionPassword, setSessionPassword] = useState('')
@@ -58,25 +65,21 @@ export default function PrivateLife({
   const dirty = bookSnapshot(notes, certificates, loans) !== savedSnapshot
   const summary = moneySummary(certificates, loans)
 
-  useEffect(() => {
-    let cancelled = false
-    readPrivateLifeStatus()
-      .then((data) => {
-        if (cancelled) return
-        setPhase(data.hasPassword ? 'locked' : 'setup')
-      })
-      .catch(() => {
-        if (!cancelled) setPhase('offline')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  function remember(book: PrivateBook) {
+    savePrivateBook(book)
+    savedBook.current = bookOk(book)
+  }
 
-  function openWith(nextPasswordValue: string, data: PrivateLifeOk) {
+  function openWith(nextPasswordValue: string, data: PrivateLifeOk, passwordHash = knownHash) {
     const nextNotes = data.notes ?? []
     const nextCertificates = data.certificates ?? []
     const nextLoans = data.loans ?? []
+    remember({
+      passwordHash,
+      notes: nextNotes,
+      certificates: nextCertificates,
+      loans: nextLoans,
+    })
     setSessionPassword(nextPasswordValue)
     setNotes(nextNotes)
     setCertificates(nextCertificates)
@@ -101,9 +104,20 @@ export default function PrivateLife({
     }
     setBusy(true)
     try {
-      const data = await writePrivateLife({ action: 'set-password', password })
-      openWith(password, data)
-      setStatus('Password saved into src/privateLife.data.ts')
+      const hash = await hashPassword(password)
+      let remote: PrivateLifeOk | null = null
+      try {
+        remote = await tryWritePrivateLife({ action: 'set-password', password })
+      } catch (caught) {
+        if (!(caught instanceof Error) || caught.message !== 'A password is already set.') throw caught
+      }
+      setKnownHash(hash)
+      openWith(
+        password,
+        remote ?? { ok: true, hasPassword: true, notes: [], certificates: [], loans: [] },
+        hash,
+      )
+      setStatus(remote ? 'Password saved into src/privateLife.data.ts' : 'Password saved in this browser.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save the password.')
     } finally {
@@ -116,10 +130,12 @@ export default function PrivateLife({
     setStatus(null)
     setBusy(true)
     try {
-      const data = await writePrivateLife({ action: 'unlock', password })
-      openWith(password, data)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not unlock.')
+      const hash = await hashPassword(password)
+      if (hash !== knownHash) {
+        setError('Wrong password.')
+        return
+      }
+      openWith(password, savedBook.current)
     } finally {
       setBusy(false)
     }
@@ -173,24 +189,30 @@ export default function PrivateLife({
     setError(null)
     setBusy(true)
     try {
-      const data = await writePrivateLife({
+      const remote = await tryWritePrivateLife({
         action: 'save',
         password: sessionPassword,
         notes,
         certificates,
         loans,
       })
-      const nextNotes = data.notes ?? notes
-      const nextCertificates = data.certificates ?? certificates
-      const nextLoans = data.loans ?? loans
+      const nextNotes = remote?.notes ?? notes
+      const nextCertificates = remote?.certificates ?? certificates
+      const nextLoans = remote?.loans ?? loans
       setNotes(nextNotes)
       setCertificates(nextCertificates)
       setLoans(nextLoans)
+      remember({
+        passwordHash: knownHash,
+        notes: nextNotes,
+        certificates: nextCertificates,
+        loans: nextLoans,
+      })
       setSavedSnapshot(bookSnapshot(nextNotes, nextCertificates, nextLoans))
       setSelectedId((current) =>
         nextNotes.some((note) => note.id === current) ? current : (nextNotes[0]?.id ?? null),
       )
-      setStatus('Saved into src/privateLife.data.ts')
+      setStatus(remote ? 'Saved into src/privateLife.data.ts' : 'Saved in this browser.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save.')
     } finally {
@@ -207,14 +229,17 @@ export default function PrivateLife({
     }
     setBusy(true)
     try {
-      await writePrivateLife({
+      const hash = await hashPassword(nextPassword)
+      const remote = await tryWritePrivateLife({
         action: 'change-password',
         password: sessionPassword,
         nextPassword,
       })
+      remember({ passwordHash: hash, notes, certificates, loans })
+      setKnownHash(hash)
       setSessionPassword(nextPassword)
       setNextPassword('')
-      setStatus('Password updated in src/privateLife.data.ts')
+      setStatus(remote ? 'Password updated in src/privateLife.data.ts' : 'Password updated in this browser.')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not change the password.')
     } finally {
@@ -229,10 +254,10 @@ export default function PrivateLife({
         <header className="hero">
           <div className="hero-copy">
             <p className="brand">Private life</p>
-            <h1>Notes, certificates, and loans, locked in this project.</h1>
+            <h1>Notes, certificates, and loans, locked with your password.</h1>
             <p className="lede">
-              Everything is written into <code>src/privateLife.data.ts</code>. The password is stored
-              there as a hash. Nothing goes into a database.
+              What you save stays in this browser. Nothing goes into a database. On your computer,
+              with <code>npm run dev</code>, Save also writes <code>src/privateLife.data.ts</code>.
             </p>
           </div>
           <div className="hero-stats" aria-hidden="true">
@@ -252,22 +277,6 @@ export default function PrivateLife({
             </div>
           </div>
         </header>
-
-        {phase === 'loading' && (
-          <section className="panel">
-            <p className="hint">Opening the private file…</p>
-          </section>
-        )}
-
-        {phase === 'offline' && (
-          <section className="panel">
-            <h2>Dev server needed</h2>
-            <p className="hint">
-              This tab writes the source file through the local Vite server. Restart{' '}
-              <code>npm run dev</code>, then open Private life again.
-            </p>
-          </section>
-        )}
 
         {phase === 'setup' && (
           <section className="panel lock-card">
