@@ -92,26 +92,33 @@ export default function MoneyBook({
   return (
     <div className="money-book">
       <div className="money-summary" aria-labelledby={summaryId}>
-        <div>
+        <div data-tone="next">
           <span id={summaryId}>{formatEgp(summary.nextInterest)}</span>
           <small>
-            {summary.nextInterestDate ? `next interest · ${formatDay(summary.nextInterestDate)}` : 'next interest'}
+            {summary.nextInterestDate ? `Next interest · ${formatDay(summary.nextInterestDate)}` : 'Next interest'}
           </small>
         </div>
-        <div>
+        <div data-tone="in">
           <span>{formatEgp(summary.monthlyIn)}</span>
-          <small>interest this month</small>
+          <small>Interest this month</small>
         </div>
-        <div>
+        <div data-tone="out">
           <span>{formatEgp(summary.monthlyOut)}</span>
-          <small>loan payments</small>
+          <small>Loan payments</small>
+        </div>
+        <div data-tone="saved">
+          <span>{formatEgp(summary.certificatePrincipal)}</span>
+          <small>Saved in certificates</small>
+        </div>
+        <div data-tone="owed">
+          <span>{formatEgp(summary.loanBalance)}</span>
+          <small>Still owed on loans</small>
         </div>
       </div>
       {(certificates.length > 0 || loans.length > 0) && (
         <p className="hint">
-          Interest is counted only on the day the bank pays it. A certificate that pays every 3 months
-          does not add cash in the other months. Saved in certificates {formatEgp(summary.certificatePrincipal)}.
-          Still owed on loans {formatEgp(summary.loanBalance)}.
+          Interest shows up only on the day the bank pays it. A certificate that pays every 3 months adds
+          nothing in the other months.
         </p>
       )}
 
@@ -186,6 +193,7 @@ function CertificateCard({
   const base = `${certificate.id}-${index}`
   const result = certificateResult(certificate)
   const ready = certificate.principal > 0 && certificate.years > 0
+  const [editing, setEditing] = useState(() => !ready)
   const payoutLabel =
     certificate.payout === 'monthly'
       ? 'Each month'
@@ -196,13 +204,72 @@ function CertificateCard({
           : 'Interest at the end'
 
   return (
-    <article className="money-card">
+    <article className="money-card" data-kind="certificate">
       <div className="money-card-head">
-        <strong>{itemTitle(certificate.name, certificate.bank, 'Certificate')}</strong>
+        <div>
+          <strong>{itemTitle(certificate.name, certificate.bank, 'Certificate')}</strong>
+          <p className="money-kicker">
+            <span className="pill" data-payout={certificate.payout}>
+              {payoutLabel}
+            </span>
+            {certificate.bank.trim() && <span>{certificate.bank.trim()}</span>}
+            {certificate.annualRate > 0 && <span>{certificate.annualRate}% a year</span>}
+          </p>
+        </div>
         <button type="button" className="btn danger" onClick={onRemove}>
           Remove
         </button>
       </div>
+      {ready && (
+        <dl className="fact-grid">
+          <div className="fact fact-hero">
+            <dt>Next interest</dt>
+            <dd>
+              {result.matured
+                ? 'Finished'
+                : result.nextDate && result.nextAmount !== null
+                  ? `${formatDay(result.nextDate)} · ${formatEgp(result.nextAmount)}`
+                  : 'Add a start date'}
+            </dd>
+          </div>
+          <div className="fact">
+            <dt>{payoutLabel}</dt>
+            <dd>{formatEgp(result.payoutAmount)}</dd>
+          </div>
+          <div className="fact">
+            <dt>Total interest</dt>
+            <dd>{formatEgp(result.totalInterest)}</dd>
+          </div>
+          <div className="fact">
+            <dt>{certificate.payout === 'maturity' ? 'You receive at the end' : 'Amount returned'}</dt>
+            <dd>{formatEgp(result.receiveAtEnd)}</dd>
+          </div>
+          {result.interestSoFar !== null && (
+            <div className="fact">
+              <dt>{result.matured ? 'Finished' : 'Interest so far'}</dt>
+              <dd>{result.matured ? formatDay(result.endDate) : formatEgp(result.interestSoFar)}</dd>
+            </div>
+          )}
+          {result.interestLeft !== null && !result.matured && (
+            <div className="fact">
+              <dt>Still to come</dt>
+              <dd>{formatEgp(result.interestLeft)}</dd>
+            </div>
+          )}
+          {result.endDate && (
+            <div className="fact">
+              <dt>Ends</dt>
+              <dd>{formatDay(result.endDate)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+      <div className="money-edit">
+        <button type="button" className="btn" onClick={() => setEditing((open) => !open)}>
+          {editing ? 'Hide details' : 'Edit details'}
+        </button>
+      </div>
+      {editing && (
       <div className="money-fields">
         <Field id={`${base}-name`} label="Name">
           <input
@@ -291,56 +358,9 @@ function CertificateCard({
           />
         </Field>
       </div>
+      )}
       {ready && !certificate.startDate && (
         <p className="hint">Add a start date to see when the next interest is paid.</p>
-      )}
-      {ready && (
-        <dl className="money-results">
-          {result.nextDate && result.nextAmount !== null && (
-            <div>
-              <dt>Next interest</dt>
-              <dd>
-                {formatDay(result.nextDate)} · {formatEgp(result.nextAmount)}
-              </dd>
-            </div>
-          )}
-          {result.matured && (
-            <div>
-              <dt>Next interest</dt>
-              <dd>Finished</dd>
-            </div>
-          )}
-          <div>
-            <dt>{payoutLabel}</dt>
-            <dd>{formatEgp(result.payoutAmount)}</dd>
-          </div>
-          <div>
-            <dt>Total interest</dt>
-            <dd>{formatEgp(result.totalInterest)}</dd>
-          </div>
-          <div>
-            <dt>{certificate.payout === 'maturity' ? 'You receive at the end' : 'Amount returned'}</dt>
-            <dd>{formatEgp(result.receiveAtEnd)}</dd>
-          </div>
-          {result.interestSoFar !== null && (
-            <div>
-              <dt>{result.matured ? 'Finished' : 'Interest so far'}</dt>
-              <dd>{result.matured ? formatDay(result.endDate) : formatEgp(result.interestSoFar)}</dd>
-            </div>
-          )}
-          {result.interestLeft !== null && !result.matured && (
-            <div>
-              <dt>Interest still to come</dt>
-              <dd>{formatEgp(result.interestLeft)}</dd>
-            </div>
-          )}
-          {result.endDate && (
-            <div>
-              <dt>Ends</dt>
-              <dd>{formatDay(result.endDate)}</dd>
-            </div>
-          )}
-        </dl>
       )}
     </article>
   )
@@ -358,16 +378,70 @@ function LoanCard({
   const base = loan.id
   const result = loanResult(loan)
   const ready = loan.principal > 0 && loan.months > 0
+  const [editing, setEditing] = useState(() => !ready)
   const years = loan.months / 12
 
   return (
-    <article className="money-card">
+    <article className="money-card" data-kind="loan">
       <div className="money-card-head">
-        <strong>{itemTitle(loan.name, loan.bank, 'Loan')}</strong>
+        <div>
+          <strong>{itemTitle(loan.name, loan.bank, 'Loan')}</strong>
+          <p className="money-kicker">
+            <span className="pill" data-payout={loan.kind}>
+              {loan.kind === 'flat' ? 'Flat interest' : 'Declining interest'}
+            </span>
+            {loan.bank.trim() && <span>{loan.bank.trim()}</span>}
+            {loan.annualRate > 0 && <span>{loan.annualRate}% a year</span>}
+          </p>
+        </div>
         <button type="button" className="btn danger" onClick={onRemove}>
           Remove
         </button>
       </div>
+      {ready && (
+        <dl className="fact-grid">
+          <div className="fact fact-hero">
+            <dt>Each month</dt>
+            <dd>{formatEgp(result.installment)}</dd>
+          </div>
+          <div className="fact">
+            <dt>Total interest</dt>
+            <dd>{formatEgp(result.totalInterest)}</dd>
+          </div>
+          <div className="fact">
+            <dt>Total you pay</dt>
+            <dd>{formatEgp(result.totalPayable)}</dd>
+          </div>
+          {result.paidMonths !== null && (
+            <div className="fact">
+              <dt>{result.finished ? 'Finished' : 'Paid'}</dt>
+              <dd>
+                {result.finished
+                  ? formatDay(result.payoffDate)
+                  : `${result.paidMonths} of ${loan.months} months`}
+              </dd>
+            </div>
+          )}
+          {result.paidMonths !== null && !result.finished && (
+            <div className="fact">
+              <dt>Still to pay</dt>
+              <dd>{formatEgp(result.stillToPay)}</dd>
+            </div>
+          )}
+          {result.payoffDate && !result.finished && (
+            <div className="fact">
+              <dt>Ends</dt>
+              <dd>{formatDay(result.payoffDate)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+      <div className="money-edit">
+        <button type="button" className="btn" onClick={() => setEditing((open) => !open)}>
+          {editing ? 'Hide details' : 'Edit details'}
+        </button>
+      </div>
+      {editing && (
       <div className="money-fields">
         <Field id={`${base}-name`} label="Name">
           <input
@@ -444,50 +518,13 @@ function LoanCard({
           />
         </Field>
       </div>
+      )}
       {ready && (
-        <>
-          <dl className="money-results">
-            <div>
-              <dt>Each month</dt>
-              <dd>{formatEgp(result.installment)}</dd>
-            </div>
-            <div>
-              <dt>Total interest</dt>
-              <dd>{formatEgp(result.totalInterest)}</dd>
-            </div>
-            <div>
-              <dt>Total you pay</dt>
-              <dd>{formatEgp(result.totalPayable)}</dd>
-            </div>
-            {result.paidMonths !== null && (
-              <div>
-                <dt>{result.finished ? 'Finished' : 'Paid'}</dt>
-                <dd>
-                  {result.finished
-                    ? formatDay(result.payoffDate)
-                    : `${result.paidMonths} of ${loan.months} months`}
-                </dd>
-              </div>
-            )}
-            {result.paidMonths !== null && !result.finished && (
-              <div>
-                <dt>Still to pay</dt>
-                <dd>{formatEgp(result.stillToPay)}</dd>
-              </div>
-            )}
-            {result.payoffDate && !result.finished && (
-              <div>
-                <dt>Ends</dt>
-                <dd>{formatDay(result.payoffDate)}</dd>
-              </div>
-            )}
-          </dl>
-          <p className="hint">
-            {loan.kind === 'flat'
-              ? `Flat ${loan.annualRate}% over ${years.toFixed(1)} years is the same payment as a declining rate of ${percent(result.decliningRate)}.`
-              : `Declining ${loan.annualRate}% is the same payment as a flat rate of about ${percent(result.flatRate)}.`}
-          </p>
-        </>
+        <p className="hint">
+          {loan.kind === 'flat'
+            ? `Flat ${loan.annualRate}% over ${years.toFixed(1)} years is the same payment as a declining rate of ${percent(result.decliningRate)}.`
+            : `Declining ${loan.annualRate}% is the same payment as a flat rate of about ${percent(result.flatRate)}.`}
+        </p>
       )}
     </article>
   )
@@ -531,7 +568,8 @@ function InterestCalendar({ certificates }: { certificates: BankCertificate[] })
       {payouts.length === 0 ? (
         <p className="hint">Add a start date on a certificate to see when the next interest arrives, and how much.</p>
       ) : (
-        <>
+        <div className="interest-layout">
+          <div>
           <div className="interest-next">
             <span>Soon</span>
             <strong>{formatDay(soonest)}</strong>
@@ -551,6 +589,8 @@ function InterestCalendar({ certificates }: { certificates: BankCertificate[] })
               </li>
             ))}
           </ul>
+          </div>
+          <div>
           <div className="interest-cal-head">
             <button type="button" className="btn" onClick={() => setCursor(new Date(year, month - 1, 1))}>
               Previous
@@ -606,7 +646,8 @@ function InterestCalendar({ certificates }: { certificates: BankCertificate[] })
               )}
             </div>
           )}
-        </>
+          </div>
+        </div>
       )}
     </section>
   )
