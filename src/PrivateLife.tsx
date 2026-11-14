@@ -265,7 +265,7 @@ export default function PrivateLife({
               <span data-sign={phase === 'open' && summary.net < 0 ? 'neg' : 'pos'}>
                 {phase === 'open' ? formatEgp(summary.net) : '—'}
               </span>
-              <small>left each month</small>
+              <small>left this month</small>
             </div>
             <div>
               <span>{phase === 'open' ? certificates.length : '—'}</span>

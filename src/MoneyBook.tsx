@@ -93,12 +93,14 @@ export default function MoneyBook({
     <div className="money-book">
       <div className="money-summary" aria-labelledby={summaryId}>
         <div>
-          <span data-sign={summary.net < 0 ? 'neg' : 'pos'}>{formatEgp(summary.net)}</span>
-          <small id={summaryId}>left each month</small>
+          <span id={summaryId}>{formatEgp(summary.nextInterest)}</span>
+          <small>
+            {summary.nextInterestDate ? `next interest · ${formatDay(summary.nextInterestDate)}` : 'next interest'}
+          </small>
         </div>
         <div>
           <span>{formatEgp(summary.monthlyIn)}</span>
-          <small>certificate cash</small>
+          <small>interest this month</small>
         </div>
         <div>
           <span>{formatEgp(summary.monthlyOut)}</span>
@@ -107,11 +109,9 @@ export default function MoneyBook({
       </div>
       {(certificates.length > 0 || loans.length > 0) && (
         <p className="hint">
-          {summary.net >= 0
-            ? 'Certificate payouts cover the loan payments, before any certificate that pays only at the end.'
-            : 'Loan payments are higher than the certificate cash you receive each month.'}{' '}
-          Saved in certificates {formatEgp(summary.certificatePrincipal)}. Still owed on loans{' '}
-          {formatEgp(summary.loanBalance)}.
+          Interest is counted only on the day the bank pays it. A certificate that pays every 3 months
+          does not add cash in the other months. Saved in certificates {formatEgp(summary.certificatePrincipal)}.
+          Still owed on loans {formatEgp(summary.loanBalance)}.
         </p>
       )}
 
@@ -127,9 +127,9 @@ export default function MoneyBook({
       </div>
       <InterestCalendar certificates={certificates} />
       <p className="hint">
-        Use the yearly rate printed by the bank. A monthly certificate pays amount × rate ÷ 12, and
-        that cash does not compound. A certificate that pays at the end compounds the rate, then
-        returns the amount plus interest.
+        Use the yearly rate printed by the bank. Every month pays amount × rate ÷ 12. Every 3 months
+        pays three times that, and only once each quarter. A certificate that pays at the end
+        compounds the rate, then returns the amount plus interest.
       </p>
       {certificates.length === 0 && <p className="empty">No certificates yet.</p>}
       <div className="money-list">

@@ -70,6 +70,8 @@ export type MoneySummary = {
   monthlyIn: number
   monthlyOut: number
   net: number
+  nextInterest: number
+  nextInterestDate: string | null
   certificatePrincipal: number
   loanBalance: number
 }
@@ -79,6 +81,17 @@ const periodsPerYear: Record<Compounding, number> = {
   quarterly: 4,
   semiannual: 2,
   yearly: 1,
+}
+
+const payoutEveryMonths: Record<Exclude<CertificatePayout, 'maturity'>, number> = {
+  monthly: 1,
+  quarterly: 3,
+  yearly: 12,
+}
+
+function monthsBetweenPayouts(certificate: BankCertificate) {
+  if (certificate.payout === 'maturity') return 12 / periodsPerYear[certificate.compounding]
+  return payoutEveryMonths[certificate.payout]
 }
 
 export function roundMoney(value: number) {
@@ -99,11 +112,10 @@ export function certificateResult(certificate: BankCertificate, today = new Date
   const rate = finite(certificate.annualRate) / 100
   const years = finite(certificate.years)
   const maturity = certificate.payout === 'maturity'
-  const perYear = maturity
-    ? periodsPerYear[certificate.compounding]
-    : periodsPerYear[certificate.payout === 'maturity' ? 'yearly' : certificate.payout]
+  const everyMonths = monthsBetweenPayouts(certificate)
+  const perYear = 12 / everyMonths
   const periods = Math.max(0, Math.round(years * perYear))
-  const progress = periodProgress(certificate.startDate, perYear, periods, today)
+  const progress = periodProgress(certificate.startDate, everyMonths, periods, today)
 
   if (maturity) {
     const periodRate = perYear > 0 ? rate / perYear : 0
@@ -130,15 +142,15 @@ export function certificateResult(certificate: BankCertificate, today = new Date
     }
   }
 
-  const payoutAmount = perYear > 0 ? roundMoney((principal * rate) / perYear) : 0
+  const payoutAmount = everyMonths > 0 ? roundMoney((principal * rate * everyMonths) / 12) : 0
   const totalInterest = roundMoney(payoutAmount * periods)
   const done = progress?.done ?? null
   const active = !(progress?.matured ?? false)
-  const nextDate = progress?.matured ? null : nextDueDate(certificate.startDate, perYear, periods, today)
+  const nextDate = progress?.matured ? null : nextDueDate(certificate.startDate, everyMonths, periods, today)
   return {
     payoutAmount,
     payoutsPerYear: perYear,
-    monthlyCash: active && perYear > 0 ? roundMoney((payoutAmount * perYear) / 12) : 0,
+    monthlyCash: active && certificate.payout === 'monthly' ? payoutAmount : 0,
     totalInterest,
     receiveAtEnd: roundMoney(principal),
     periods,
@@ -213,12 +225,17 @@ export function moneySummary(
   let monthlyOut = 0
   let certificatePrincipal = 0
   let loanBalance = 0
+  const monthKey = toIso(today).slice(0, 7)
+  const payouts = interestPayouts(certificates, today)
 
   for (const certificate of certificates) {
     const result = certificateResult(certificate, today)
     if (result.matured) continue
     if (finite(certificate.principal) > 0) certificatePrincipal += finite(certificate.principal)
-    monthlyIn += result.monthlyCash
+  }
+
+  for (const payout of payouts) {
+    if (payout.date.startsWith(monthKey)) monthlyIn += payout.amount
   }
 
   for (const loan of loans) {
@@ -228,10 +245,17 @@ export function moneySummary(
     loanBalance += result.balanceLeft
   }
 
+  const nextInterestDate = payouts[0]?.date ?? null
+  const nextInterest = payouts
+    .filter((payout) => payout.date === nextInterestDate)
+    .reduce((sum, payout) => sum + payout.amount, 0)
+
   return {
     monthlyIn: roundMoney(monthlyIn),
     monthlyOut: roundMoney(monthlyOut),
     net: roundMoney(monthlyIn - monthlyOut),
+    nextInterest: roundMoney(nextInterest),
+    nextInterestDate,
     certificatePrincipal: roundMoney(certificatePrincipal),
     loanBalance: roundMoney(loanBalance),
   }
@@ -347,52 +371,47 @@ function payoutSchedule(certificate: BankCertificate, today: Date) {
   const start = parseIsoDate(certificate.startDate)
   const years = finite(certificate.years)
   const maturity = certificate.payout === 'maturity'
-  const perYear = maturity
-    ? periodsPerYear[certificate.compounding]
-    : periodsPerYear[certificate.payout === 'maturity' ? 'yearly' : certificate.payout]
-  const periods = Math.max(0, Math.round(years * perYear))
-  if (!start || perYear <= 0 || periods <= 0 || finite(certificate.principal) <= 0) return []
+  const everyMonths = monthsBetweenPayouts(certificate)
+  const periods = Math.max(0, Math.round((years * 12) / everyMonths))
+  if (!start || everyMonths <= 0 || periods <= 0 || finite(certificate.principal) <= 0) return []
   const result = certificateResult(certificate, today)
   if (maturity) {
     return result.endDate && result.totalInterest >= 0 ? [{ date: result.endDate, amount: result.totalInterest }] : []
   }
-  const monthsEach = 12 / perYear
   const payouts: { date: string; amount: number }[] = []
   for (let period = 1; period <= periods; period++) {
     payouts.push({
-      date: toIso(addMonths(start, period * monthsEach)),
+      date: toIso(addMonths(start, period * everyMonths)),
       amount: result.payoutAmount,
     })
   }
   return payouts
 }
 
-function nextDueDate(startDate: string, perYear: number, periods: number, today: Date) {
+function nextDueDate(startDate: string, everyMonths: number, periods: number, today: Date) {
   const start = parseIsoDate(startDate)
-  if (!start || perYear <= 0 || periods <= 0) return null
+  if (!start || everyMonths <= 0 || periods <= 0) return null
   const todayKey = dateKey(today)
-  const monthsEach = 12 / perYear
   for (let period = 1; period <= periods; period++) {
-    const due = addMonths(start, period * monthsEach)
+    const due = addMonths(start, period * everyMonths)
     if (dateKey(due) >= todayKey) return toIso(due)
   }
   return null
 }
 
-function periodProgress(startDate: string, perYear: number, periods: number, today: Date) {
+function periodProgress(startDate: string, everyMonths: number, periods: number, today: Date) {
   const start = parseIsoDate(startDate)
-  if (!start || perYear <= 0 || periods <= 0) return null
-  const monthsEach = 12 / perYear
+  if (!start || everyMonths <= 0 || periods <= 0) return null
   let done = 0
   for (let period = 1; period <= periods; period++) {
-    const due = addMonths(start, period * monthsEach)
+    const due = addMonths(start, period * everyMonths)
     if (dateKey(due) <= dateKey(today)) done++
     else break
   }
   return {
     done,
     matured: done >= periods,
-    endDate: toIso(addMonths(start, periods * monthsEach)),
+    endDate: toIso(addMonths(start, periods * everyMonths)),
   }
 }
 
