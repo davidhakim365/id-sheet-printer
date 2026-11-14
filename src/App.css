@@ -791,3 +791,140 @@ code {
   font-weight: 600;
   text-align: right;
 }
+
+.interest-cal {
+  display: grid;
+  gap: 0.85rem;
+  margin: 0.4rem 0 1.15rem;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--line);
+}
+
+.interest-next {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.interest-next span,
+.interest-weekdays span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.interest-next strong {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.interest-next em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.interest-next small,
+.interest-soon span,
+.interest-selected span {
+  color: var(--muted);
+}
+
+.interest-soon,
+.interest-selected ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.interest-soon button,
+.interest-selected li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.interest-soon button {
+  cursor: pointer;
+}
+
+.interest-selected li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.interest-soon button strong,
+.interest-selected strong {
+  color: var(--accent);
+}
+
+.interest-cal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.interest-weekdays,
+.interest-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.interest-weekdays span {
+  text-align: center;
+}
+
+.interest-day {
+  min-height: 3.4rem;
+  display: grid;
+  align-content: space-between;
+  justify-items: start;
+  padding: 0.3rem;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.interest-day[data-paid='true'] {
+  border-color: var(--accent);
+  background: rgba(31, 92, 69, 0.08);
+}
+
+.interest-day[data-today='true'] {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.interest-day[data-selected='true'] {
+  background: var(--accent);
+  color: #f4f7f4;
+}
+
+.interest-day[data-selected='true'] small {
+  color: #f4f7f4;
+}
+
+.interest-day small {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.interest-selected ul {
+  margin-top: 0.45rem;
+}

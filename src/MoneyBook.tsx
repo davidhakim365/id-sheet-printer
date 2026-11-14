@@ -1,13 +1,15 @@
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import {
   certificateResult,
   formatEgp,
+  interestPayouts,
   loanResult,
   moneySummary,
   type BankCertificate,
   type BankLoan,
   type CertificatePayout,
   type Compounding,
+  type InterestPayout,
   type LoanKind,
 } from './money'
 
@@ -123,6 +125,7 @@ export default function MoneyBook({
           Add certificate
         </button>
       </div>
+      <InterestCalendar certificates={certificates} />
       <p className="hint">
         Use the yearly rate printed by the bank. A monthly certificate pays amount × rate ÷ 12, and
         that cash does not compound. A certificate that pays at the end compounds the rate, then
@@ -288,8 +291,25 @@ function CertificateCard({
           />
         </Field>
       </div>
+      {ready && !certificate.startDate && (
+        <p className="hint">Add a start date to see when the next interest is paid.</p>
+      )}
       {ready && (
         <dl className="money-results">
+          {result.nextDate && result.nextAmount !== null && (
+            <div>
+              <dt>Next interest</dt>
+              <dd>
+                {formatDay(result.nextDate)} · {formatEgp(result.nextAmount)}
+              </dd>
+            </div>
+          )}
+          {result.matured && (
+            <div>
+              <dt>Next interest</dt>
+              <dd>Finished</dd>
+            </div>
+          )}
           <div>
             <dt>{payoutLabel}</dt>
             <dd>{formatEgp(result.payoutAmount)}</dd>
@@ -471,6 +491,149 @@ function LoanCard({
       )}
     </article>
   )
+}
+
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function InterestCalendar({ certificates }: { certificates: BankCertificate[] }) {
+  const payouts = interestPayouts(certificates)
+  const soonest = payouts[0]?.date ?? ''
+  const [cursor, setCursor] = useState(() => monthDate(soonest))
+  const [selected, setSelected] = useState(soonest)
+
+  useEffect(() => {
+    setCursor(monthDate(soonest))
+    setSelected(soonest)
+  }, [soonest])
+
+  const year = cursor.getFullYear()
+  const month = cursor.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const leading = new Date(year, month, 1).getDay()
+  const cells: Array<number | null> = [
+    ...Array.from({ length: leading }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ]
+  const byDate = new Map<string, InterestPayout[]>()
+  for (const payout of payouts) {
+    const list = byDate.get(payout.date) ?? []
+    list.push(payout)
+    byDate.set(payout.date, list)
+  }
+  const soon = payouts.slice(0, 6)
+  const selectedPayouts = selected ? (byDate.get(selected) ?? []) : []
+  const soonestPayouts = soonest ? (byDate.get(soonest) ?? []) : []
+  const soonestTotal = soonestPayouts.reduce((sum, payout) => sum + payout.amount, 0)
+  const today = isoToday()
+
+  return (
+    <section className="interest-cal" aria-label="Interest calendar">
+      {payouts.length === 0 ? (
+        <p className="hint">Add a start date on a certificate to see when the next interest arrives, and how much.</p>
+      ) : (
+        <>
+          <div className="interest-next">
+            <span>Soon</span>
+            <strong>{formatDay(soonest)}</strong>
+            <em>{formatEgp(soonestTotal)}</em>
+            <small>
+              {soonestPayouts.map((payout) => payout.name).join(' · ')}
+            </small>
+          </div>
+          <ul className="interest-soon">
+            {soon.map((payout) => (
+              <li key={`${payout.certificateId}-${payout.date}`}>
+                <button type="button" onClick={() => showPayout(payout.date, setCursor, setSelected)}>
+                  <span>{formatDay(payout.date)}</span>
+                  <span>{payout.name}</span>
+                  <strong>{formatEgp(payout.amount)}</strong>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="interest-cal-head">
+            <button type="button" className="btn" onClick={() => setCursor(new Date(year, month - 1, 1))}>
+              Previous
+            </button>
+            <strong>
+              {cursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+            </strong>
+            <button type="button" className="btn" onClick={() => setCursor(new Date(year, month + 1, 1))}>
+              Next
+            </button>
+          </div>
+          <div className="interest-weekdays">
+            {weekdays.map((day) => (
+              <span key={day}>{day}</span>
+            ))}
+          </div>
+          <div className="interest-grid">
+            {cells.map((day, index) => {
+              if (!day) return <span key={`empty-${index}`} />
+              const iso = toIso(year, month, day)
+              const dayPayouts = byDate.get(iso) ?? []
+              const total = dayPayouts.reduce((sum, payout) => sum + payout.amount, 0)
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  className="interest-day"
+                  data-paid={dayPayouts.length > 0}
+                  data-today={iso === today}
+                  data-selected={iso === selected}
+                  onClick={() => setSelected(iso)}
+                >
+                  <span>{day}</span>
+                  {dayPayouts.length > 0 && <small>{formatCompact(total)}</small>}
+                </button>
+              )
+            })}
+          </div>
+          {selected && (
+            <div className="interest-selected">
+              <strong>{formatDay(selected)}</strong>
+              {selectedPayouts.length === 0 ? (
+                <p className="hint">No interest on this day.</p>
+              ) : (
+                <ul>
+                  {selectedPayouts.map((payout) => (
+                    <li key={payout.certificateId}>
+                      <span>{payout.name}</span>
+                      <strong>{formatEgp(payout.amount)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function showPayout(iso: string, setCursor: (date: Date) => void, setSelected: (iso: string) => void) {
+  setCursor(monthDate(iso))
+  setSelected(iso)
+}
+
+function monthDate(iso: string) {
+  const [year, month] = iso.split('-').map(Number)
+  if (!year || !month) return new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  return new Date(year, month - 1, 1)
+}
+
+function isoToday() {
+  const today = new Date()
+  return toIso(today.getFullYear(), today.getMonth(), today.getDate())
+}
+
+function toIso(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function formatCompact(value: number) {
+  return new Intl.NumberFormat('en-EG', { maximumFractionDigits: 0 }).format(value)
 }
 
 function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
